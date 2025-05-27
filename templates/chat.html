@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Chat App</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 100%);
+            --dark-gradient: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 100%);
+            --darker-gradient: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
+            --card-bg: rgba(30, 30, 50, 0.95);
+            --message-bg: rgba(40, 40, 60, 0.8);
+            --text-primary: #ffffff;
+            --text-secondary: #b8bcc8;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            background: var(--dark-gradient);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text-primary);
+        }
+
+        .chat-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .auth-card, .chat-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+        }
+
+        .auth-card {
+            max-width: 400px;
+            margin: 10vh auto;
+        }
+
+        .chat-header {
+            background: var(--darker-gradient);
+            color: white;
+            border-radius: 20px 20px 0 0;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .messages-container {
+            height: 400px;
+            overflow-y: auto;
+            padding: 20px;
+            background: rgba(15, 15, 25, 0.8);
+            border-radius: 0 0 20px 20px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .message.own {
+            text-align: right;
+        }
+
+        .message-bubble {
+            display: inline-block;
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        .message-bubble.own {
+            background: var(--secondary-gradient);
+            color: white;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+        }
+
+        .message-bubble.other {
+            background: var(--message-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .message-bubble.system {
+            background: rgba(60, 60, 80, 0.8);
+            color: var(--text-secondary);
+            font-style: italic;
+            text-align: center;
+            border-radius: 12px;
+            max-width: 90%;
+            border: 1px solid var(--border-color);
+        }
+
+        .message-info {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .input-group {
+            border-radius: 25px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            background: var(--message-bg);
+            border: 1px solid var(--border-color);
+        }
+
+        .form-control {
+            border: none;
+            padding: 15px 20px;
+            font-size: 1rem;
+            background: transparent;
+            color: var(--text-primary);
+        }
+
+        .form-control::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .form-control:focus {
+            box-shadow: none;
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+        }
+
+        .btn-send {
+            background: var(--secondary-gradient);
+            border: none;
+            padding: 15px 25px;
+            color: white;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-send:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 107, 107, 0.4);
+            color: white;
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            border: none;
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .online-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #28a745;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 10px 20px;
+            font-style: italic;
+            color: var(--text-secondary);
+            background: rgba(40, 40, 60, 0.5);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 25px;
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .status-connected {
+            background: rgba(40, 167, 69, 0.9);
+            border: 1px solid rgba(40, 167, 69, 0.3);
+        }
+
+        .status-disconnected {
+            background: rgba(220, 53, 69, 0.9);
+            border: 1px solid rgba(220, 53, 69, 0.3);
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+            text-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .auth-tabs {
+            border: none;
+            margin-bottom: 20px;
+        }
+
+        .nav-link {
+            border: none;
+            border-radius: 25px;
+            margin: 0 5px;
+            transition: all 0.3s ease;
+            color: var(--text-secondary);
+            background: rgba(40, 40, 60, 0.5);
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+            background: rgba(60, 60, 80, 0.7);
+        }
+
+        .nav-link.active {
+            background: var(--primary-gradient);
+            color: white;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .form-floating {
+            margin-bottom: 20px;
+        }
+
+        .form-floating .form-control {
+            border-radius: 15px;
+            border: 2px solid var(--border-color);
+            background: rgba(40, 40, 60, 0.5);
+            color: var(--text-primary);
+        }
+
+        .form-floating .form-control::placeholder {
+            color: transparent;
+        }
+
+        .form-floating .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            background: rgba(40, 40, 60, 0.8);
+        }
+
+        .form-floating label {
+            color: var(--text-secondary);
+        }
+
+        .form-floating .form-control:focus ~ label,
+        .form-floating .form-control:not(:placeholder-shown) ~ label {
+            color: #667eea;
+        }
+
+        .text-muted {
+            color: var(--text-secondary) !important;
+        }
+
+        .btn-outline-light {
+            border-color: rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .btn-outline-light:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.5);
+            color: white;
+        }
+
+        /* Custom scrollbar for dark theme */
+        .messages-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .messages-container::-webkit-scrollbar-track {
+            background: rgba(40, 40, 60, 0.3);
+            border-radius: 10px;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.6);
+            border-radius: 10px;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 126, 234, 0.8);
+        }
+    </style>
+</head>
+<body>
+    <!-- Connection Status -->
+    <div id="connectionStatus" class="connection-status status-disconnected">
+        <i class="fas fa-circle me-2"></i>Disconnected
+    </div>
+
+    <!-- Authentication Section -->
+    <div id="authSection" class="chat-container">
+        <div class="auth-card">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <div class="logo">
+                        <i class="fas fa-comments"></i> SecureChat
+                    </div>
+                    <p class="text-muted">Connect securely with others</p>
+                </div>
+
+                <ul class="nav nav-pills nav-fill auth-tabs">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="login-tab" href="#" onclick="switchTab('login')">Login</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="register-tab" href="#" onclick="switchTab('register')">Register</a>
+                    </li>
+                </ul>
+
+                <!-- Login Form -->
+                <div id="loginForm">
+                    <div class="form-floating">
+                        <input type="text" class="form-control" id="loginUsername" placeholder="Username">
+                        <label for="loginUsername">Username</label>
+                    </div>
+                    <div class="form-floating">
+                        <input type="password" class="form-control" id="loginPassword" placeholder="Password">
+                        <label for="loginPassword">Password</label>
+                    </div>
+                    <button class="btn btn-primary w-100" onclick="login()">
+                        <i class="fas fa-sign-in-alt me-2"></i>Login
+                    </button>
+                </div>
+
+                <!-- Register Form -->
+                <div id="registerForm" style="display: none;">
+                    <div class="form-floating">
+                        <input type="text" class="form-control" id="registerUsername" placeholder="Username">
+                        <label for="registerUsername">Username</label>
+                    </div>
+                    <div class="form-floating">
+                        <input type="password" class="form-control" id="registerPassword" placeholder="Password">
+                        <label for="registerPassword">Password</label>
+                    </div>
+                    <button class="btn btn-primary w-100" onclick="register()">
+                        <i class="fas fa-user-plus me-2"></i>Register
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Section -->
+    <div id="chatSection" class="chat-container" style="display: none;">
+        <div class="chat-card">
+            <div class="chat-header">
+                <h3 class="mb-0">
+                    <i class="fas fa-comments me-2"></i>SecureChat
+                    <span class="online-indicator ms-2"></span>
+                </h3>
+                <p class="mb-0 mt-2">Welcome, <span id="currentUser"></span>!</p>
+                <button class="btn btn-outline-light btn-sm mt-2" onclick="logout()">
+                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                </button>
+            </div>
+
+            <div class="messages-container" id="messagesContainer">
+                <!-- Messages will be populated here -->
+            </div>
+
+            <div class="typing-indicator" id="typingIndicator">
+                Someone is typing...
+            </div>
+
+            <div class="p-3">
+                <div class="input-group">
+                    <input type="text" class="form-control" id="messageInput" placeholder="Type your message..." onkeypress="handleKeyPress(event)">
+                    <button class="btn btn-send" onclick="sendMessage()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentUser = '';
+        let authToken = '';
+        let websocket = null;
+
+        function switchTab(tab) {
+            document.getElementById('login-tab').classList.remove('active');
+            document.getElementById('register-tab').classList.remove('active');
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'none';
+
+            if (tab === 'login') {
+                document.getElementById('login-tab').classList.add('active');
+                document.getElementById('loginForm').style.display = 'block';
+            } else {
+                document.getElementById('register-tab').classList.add('active');
+                document.getElementById('registerForm').style.display = 'block';
+            }
+        }
+
+        async function login() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            if (!username || !password) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    authToken = data.access_token;
+                    currentUser = username;
+                    showChatSection();
+                    connectWebSocket();
+                } else {
+                    alert(data.detail || 'Login failed');
+                }
+            } catch (error) {
+                alert('Login failed: ' + error.message);
+            }
+        }
+
+        async function register() {
+            const username = document.getElementById('registerUsername').value;
+            const password = document.getElementById('registerPassword').value;
+
+            if (!username || !password) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            if (password.length < 6) {
+                alert('Password must be at least 6 characters long');
+                return;
+            }
+
+            try {
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    authToken = data.access_token;
+                    currentUser = username;
+                    showChatSection();
+                    connectWebSocket();
+                } else {
+                    alert(data.detail || 'Registration failed');
+                }
+            } catch (error) {
+                alert('Registration failed: ' + error.message);
+            }
+        }
+
+        function showChatSection() {
+            document.getElementById('authSection').style.display = 'none';
+            document.getElementById('chatSection').style.display = 'block';
+            document.getElementById('currentUser').textContent = currentUser;
+            loadMessages();
+        }
+
+        async function loadMessages() {
+            try {
+                const response = await fetch('/messages', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                    },
+                });
+
+                const data = await response.json();
+                const container = document.getElementById('messagesContainer');
+                container.innerHTML = '';
+
+                data.messages.forEach(message => {
+                    displayMessage(message);
+                });
+            } catch (error) {
+                console.error('Failed to load messages:', error);
+            }
+        }
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/${authToken}`;
+            
+            websocket = new WebSocket(wsUrl);
+
+            websocket.onopen = function() {
+                updateConnectionStatus(true);
+            };
+
+            websocket.onmessage = function(event) {
+                const message = JSON.parse(event.data);
+                displayMessage(message);
+            };
+
+            websocket.onclose = function() {
+                updateConnectionStatus(false);
+                // Attempt to reconnect after 3 seconds
+                setTimeout(() => {
+                    if (authToken) {
+                        connectWebSocket();
+                    }
+                }, 3000);
+            };
+
+            websocket.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                updateConnectionStatus(false);
+            };
+        }
+
+        function updateConnectionStatus(connected) {
+            const status = document.getElementById('connectionStatus');
+            if (connected) {
+                status.className = 'connection-status status-connected';
+                status.innerHTML = '<i class="fas fa-circle me-2"></i>Connected';
+            } else {
+                status.className = 'connection-status status-disconnected';
+                status.innerHTML = '<i class="fas fa-circle me-2"></i>Disconnected';
+            }
+        }
+
+        function displayMessage(message) {
+            const container = document.getElementById('messagesContainer');
+            const messageDiv = document.createElement('div');
+            
+            const isOwnMessage = message.username === currentUser;
+            const isSystemMessage = message.type === 'system';
+            
+            messageDiv.className = `message ${isOwnMessage && !isSystemMessage ? 'own' : ''}`;
+            
+            const bubbleClass = isSystemMessage ? 'system' : (isOwnMessage ? 'own' : 'other');
+            const timestamp = new Date(message.timestamp).toLocaleTimeString();
+            
+            if (isSystemMessage) {
+                messageDiv.innerHTML = `
+                    <div class="message-bubble ${bubbleClass}">
+                        ${message.content}
+                    </div>
+                `;
+            } else {
+                messageDiv.innerHTML = `
+                    <div class="message-bubble ${bubbleClass}">
+                        ${message.content}
+                        <div class="message-info">
+                            ${isOwnMessage ? '' : message.username + ' • '}${timestamp}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const content = input.value.trim();
+
+            if (!content || !websocket || websocket.readyState !== WebSocket.OPEN) {
+                return;
+            }
+
+            websocket.send(JSON.stringify({ content }));
+            input.value = '';
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        function logout() {
+            if (websocket) {
+                websocket.close();
+            }
+            authToken = '';
+            currentUser = '';
+            document.getElementById('authSection').style.display = 'block';
+            document.getElementById('chatSection').style.display = 'none';
+            updateConnectionStatus(false);
+            
+            // Clear forms
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('registerUsername').value = '';
+            document.getElementById('registerPassword').value = '';
+        }
+
+        // Auto-focus message input when chat is visible
+        setInterval(() => {
+            if (document.getElementById('chatSection').style.display !== 'none') {
+                const input = document.getElementById('messageInput');
+                if (document.activeElement !== input) {
+                    input.focus();
+                }
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
